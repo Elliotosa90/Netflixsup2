@@ -1746,53 +1746,7 @@ function resetPasswordRequest() {
     // ================================================================
 // RESTORE SESSION AFTER PAGE REFRESH
 // ================================================================
-window.addEventListener('load', function () {
 
-    // Wait until Firebase data has loaded
-    initPromise.then(function () {
-
-        var session = getSession();
-
-        if (!session) return;
-
-        // Restore admin session
-        if (session.isAdmin) {
-
-            if (
-                appData &&
-                appData.admin &&
-                session.username === 'admin'
-            ) {
-                isAdminLoggedIn = true;
-                currentUser = 'admin';
-                enterDashboard('admin');
-            }
-
-            return;
-        }
-
-        // Restore normal user session
-        if (
-            appData &&
-            appData.users &&
-            appData.users[session.username]
-        ) {
-
-            currentUser = session.username;
-            currentUserData = appData.users[session.username];
-            isAdminLoggedIn = false;
-
-            applyDailyInterest().then(function () {
-                enterDashboard('user');
-            });
-        } else {
-            // User no longer exists
-            clearSession();
-        }
-
-    });
-
-});
 </script>
 
 <!--Start of Tawk.to Script-->
