@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NatureZone - Investment Platform</title>
+    <!-- ===== FIREBASE SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --red: #E50914; --dark-red: #B20710; --black: #000000;
+            --bg: #141414; --card: #1a1a1a; --card-hover: #2a2a2a;
+            --border: #333; --text: #fff; --text2: #b3b3b3; --text3: #808080;
+            --green: #46d369; --blue: #0071eb; --yellow: #e6b91e; --purple: #b37feb;
+            --orange: #ff8c00; --teal: #20c997;
+        }
+        body { font-family: 'Helvetica Neue',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--black); padding: 20px; position: relative; }
+        .auth-container::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(229,9,20,0.15) 0%, transparent 70%); pointer-events: none; }
+        .auth-box { background: rgba(0,0,0,0.75); border-radius: 8px; padding: 60px 68px 40px; width: 100%; max-width: 450px; position: relative; }
+        .auth-box .logo { text-align: center; margin-bottom: 28px; }
+        .auth-box .logo h1 { font-size: 36px; color: var(--red); font-weight: 800; text-transform: uppercase; letter-spacing: -1px; }
+        .auth-box .logo h1 span { color: var(--text); font-weight: 300; }
+        .auth-box .logo p { font-size: 12px; color: var(--text3); margin-top: 2px; letter-spacing: 2px; text-transform: uppercase; }
+        .auth-box h2 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: var(--text); }
+        .auth-box input,.auth-box select { width: 100%; padding: 14px 16px; margin-bottom: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 15px; outline: none; }
+        .auth-box input:focus { border-color: var(--text); background: var(--card-hover); }
+        .auth-box select option { background: var(--card); }
+        .auth-box .btn-primary { width: 100%; padding: 14px; background: var(--red); color: var(--text); font-weight: 700; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; }
+        .auth-box .btn-primary:hover { background: var(--dark-red); }
+        .auth-box .link { text-align: center; margin-top: 16px; font-size: 14px; color: var(--text3); }
+        .auth-box .link a { color: var(--text); cursor: pointer; text-decoration: none; }
+        .auth-box .link a:hover { text-decoration: underline; }
+        .auth-box .error { color: var(--red); font-size: 13px; margin-bottom: 10px; text-align: center; }
+        .auth-box .success { color: var(--green); font-size: 13px; margin-bottom: 10px; text-align: center; }
+        .auth-tabs { display: flex; margin-bottom: 24px; border-bottom: 2px solid var(--border); }
+        .auth-tabs div { flex: 1; text-align: center; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .auth-tabs div.active { color: var(--text); border-bottom-color: var(--red); }
+        .admin-hidden-link { text-align: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .admin-hidden-link a { color: var(--border); font-size: 11px; text-decoration: none; cursor: pointer; user-select: none; }
+        .admin-hidden-link a:hover { color: var(--text3); }
+        .admin-login-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 999; align-items: center; justify-content: center; padding: 20px; }
+        .admin-login-overlay.active { display: flex; }
+        .admin-login-box { background: var(--black); border: 1px solid var(--border); border-radius: 8px; padding: 36px; width: 100%; max-width: 380px; }
+        .admin-login-box h3 { font-size: 20px; color: var(--text); margin-bottom: 4px; }
+        .admin-login-box p.sub { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+        .admin-login-box input { width: 100%; padding: 12px 14px; margin-bottom: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 14px; outline: none; }
+        .admin-login-box input:focus { border-color: var(--blue); }
+        .admin-login-box .btn-admin { width: 100%; padding: 12px; background: var(--red); color: var(--text); font-weight: 600; border: none; border-radius: 4px; cursor: pointer; }
+        .admin-login-box .btn-admin:hover { background: var(--dark-red); }
+        .admin-login-box .admin-error { color: var(--red); font-size: 13px; margin-bottom: 10px; text-align: center; }
+        .admin-login-box .close-admin { float: right; background: none; border: none; color: var(--text3); font-size: 22px; cursor: pointer; }
+        .dashboard { display: none; }
+        .dashboard.active { display: block; }
+        .topbar { background: var(--black); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .topbar .brand { font-size: 24px; font-weight: 800; color: var(--red); text-transform: uppercase; letter-spacing: -0.5px; }
+        .topbar .brand span { color: var(--text); font-weight: 300; }
+        .topbar .user-menu { display: flex; align-items: center; gap: 18px; }
+        .topbar .user-menu .username { font-size: 14px; color: var(--text2); }
+        .topbar .user-menu button { padding: 8px 18px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .topbar .user-menu button:hover { background: var(--card-hover); }
+        .topbar .user-menu .logout-btn { background: transparent; border-color: var(--red); color: var(--red); }
+        .topbar .user-menu .logout-btn:hover { background: var(--red); color: var(--text); }
+        .dashboard-content { max-width: 1200px; margin: 0 auto; padding: 28px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 22px; }
+        .stat-card:hover { border-color: var(--text3); transform: translateY(-2px); }
+        .stat-card .label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+        .stat-card .value { font-size: 28px; font-weight: 700; color: var(--text); }
+        .stat-card .green { color: var(--green); }
+        .status-badge.active { background: rgba(70,211,105,0.15); color: var(--green); padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+        .status-badge.frozen { background: rgba(230,185,30,0.15); color: var(--yellow); padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+        .status-badge.closed { background: rgba(229,9,20,0.15); color: var(--red); padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+        .asset-badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .asset-badge.metallic { background: rgba(179,127,235,0.15); color: var(--purple); }
+        .asset-badge.energy { background: rgba(230,185,30,0.15); color: var(--yellow); }
+        .asset-badge.gemstone { background: rgba(0,113,235,0.15); color: var(--blue); }
+        .asset-icon { margin-right: 6px; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 28px; }
+        .quick-action { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; text-align: center; cursor: pointer; }
+        .quick-action:hover { border-color: var(--red); background: var(--card-hover); transform: translateY(-2px); }
+        .quick-action .icon { font-size: 30px; margin-bottom: 8px; }
+        .quick-action h3 { font-size: 15px; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+        .quick-action p { font-size: 12px; color: var(--text3); }
+        .quick-action.disabled { opacity: 0.4; cursor: not-allowed; }
+        .quick-action.disabled:hover { border-color: var(--border); background: var(--card); transform: none; }
+        .section-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 16px; margin-top: 32px; }
+        .section-title:first-child { margin-top: 0; }
+        .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 28px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table th { background: var(--black); text-align: left; padding: 14px 18px; color: var(--text3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+        table td { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+        table tr:last-child td { border-bottom: none; }
+        table tr:hover td { background: var(--card-hover); }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge.deposit { background: rgba(70,211,105,0.15); color: var(--green); }
+        .badge.profit { background: rgba(0,113,235,0.15); color: var(--blue); }
+        .badge.withdraw { background: rgba(229,9,20,0.15); color: var(--red); }
+        .badge.bank_withdraw { background: rgba(0,113,235,0.15); color: var(--blue); }
+        .badge.pending { background: rgba(230,185,30,0.15); color: var(--yellow); }
+        .badge.approved { background: rgba(70,211,105,0.15); color: var(--green); }
+        .badge.declined { background: rgba(229,9,20,0.15); color: var(--red); }
+        .badge.referral { background: rgba(179,127,235,0.15); color: var(--purple); }
+        .badge.asset_switch { background: rgba(255,140,0,0.15); color: var(--orange); }
+        .amount-green { color: var(--green); font-weight: 600; }
+        .amount-red { color: var(--red); font-weight: 600; }
+        .amount-yellow { color: var(--yellow); font-weight: 600; }
+        .amount-purple { color: var(--purple); font-weight: 600; }
+        .admin-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 28px; margin-bottom: 28px; }
+        .admin-section h3 { font-size: 17px; color: var(--text); margin-bottom: 18px; font-weight: 700; }
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; }
+        .admin-card { background: var(--black); border: 1px solid var(--border); border-radius: 8px; padding: 18px; position: relative; }
+        .admin-card:hover { border-color: var(--text3); }
+        .admin-card .user-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .admin-card .user-header h4 { font-size: 16px; color: var(--text); }
+        .admin-card .user-detail { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+        .admin-card .user-detail strong { color: var(--text); }
+        .admin-card .admin-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+        .admin-card .admin-actions input,.admin-card .admin-actions select { padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 12px; width: 100px; }
+        .admin-card .admin-actions select { width: auto; }
+        .admin-card .admin-actions button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+        .btn-green { background: var(--green); color: var(--black); }
+        .btn-blue { background: var(--blue); color: var(--text); }
+        .btn-red { background: var(--red); color: var(--text); }
+        .btn-yellow { background: var(--yellow); color: var(--black); }
+        .btn-orange { background: var(--orange); color: var(--black); }
+        .btn-teal { background: var(--teal); color: var(--black); }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--black); border: 1px solid var(--border); border-radius: 8px; padding: 32px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+        .modal h3 { font-size: 20px; color: var(--text); margin-bottom: 18px; font-weight: 700; }
+        .modal input,.modal select { width: 100%; padding: 12px 14px; margin-bottom: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 14px; outline: none; }
+        .modal input:focus { border-color: var(--text); }
+        .modal select option { background: var(--card); }
+        .modal .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+        .modal .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .modal .modal-actions .cancel { background: var(--card); color: var(--text2); }
+        .modal .modal-actions .cancel:hover { background: var(--card-hover); }
+        .hidden { display: none !important; }
+        .tab-buttons { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+        .tab-buttons button { padding: 8px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); cursor: pointer; font-size: 13px; font-weight: 600; }
+        .tab-buttons button.active { background: rgba(229,9,20,0.2); border-color: var(--red); color: var(--red); }
+        .tab-buttons button:hover { border-color: var(--red); }
+        .referral-box { background: linear-gradient(135deg, var(--card), var(--black)); border: 1px solid rgba(0,113,235,0.3); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .referral-box .r-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; }
+        .referral-box .r-code { font-size: 24px; font-weight: 700; color: var(--blue); margin: 6px 0; }
+        .referral-box .r-link { font-size: 13px; color: var(--blue); word-break: break-all; cursor: pointer; }
+        .referral-box .r-link:hover { text-decoration: underline; }
+        .reset-section { display: none; margin-top: 14px; padding: 14px; background: var(--card); border-radius: 6px; border: 1px solid var(--border); }
+        .reset-section.show { display: block; }
+        .withdraw-type-tabs { display: flex; gap: 0; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+        .withdraw-type-tabs div { flex: 1; text-align: center; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--card); color: var(--text3); border-right: 1px solid var(--border); }
+        .withdraw-type-tabs div:last-child { border-right: none; }
+        .withdraw-type-tabs div.active { background: rgba(229,9,20,0.2); color: var(--red); }
+        .withdraw-type-tabs div:hover:not(.active) { background: var(--card-hover); }
+        .asset-display { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 20px; }
+        .asset-display .a-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+        .asset-display .a-value { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .asset-display .a-rate { font-size: 13px; color: var(--text2); }
+        .asset-display .a-cooldown { font-size: 12px; color: var(--yellow); }
+        .admin-stat-red { color: var(--red); }
+        .asset-rate-input { width: 80px; padding: 6px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 13px; text-align: center; }
+        .countdown-timer { font-size: 13px; color: var(--yellow); margin-top: 4px; font-family: monospace; }
+        .interest-countdown { font-size: 13px; color: var(--blue); margin-bottom: 8px; font-family: monospace; }
+        @media (max-width:640px){
+            .auth-box { padding: 30px 24px; }
+            .topbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .admin-grid { grid-template-columns: 1fr; }
+            .dashboard-content { padding: 16px; }
+        }
+        .monnify-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: rgba(0,113,235,0.15); color: var(--blue); margin-left: 4px; }
+        .np-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: rgba(179,127,235,0.15); color: var(--purple); margin-left: 4px; }
+        .payout-status { font-size: 11px; color: var(--text3); }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- AUTH CONTAINER -->
+<!-- ============================================================ -->
+<div id="authContainer" class="auth-container">
+    <div class="auth-box">
+        <div class="logo"><h1>NATURE<span>ZONE</span></h1><p>Investment Platform</p></div>
+        <div class="auth-tabs">
+            <div class="active" onclick="showAuthTab('login')">Sign In</div>
+            <div onclick="showAuthTab('register')">Register</div>
+        </div>
+        <div id="loginForm">
+            <h2>Welcome back</h2>
+            <div id="loginError" class="error"></div>
+            <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button class="btn-primary" onclick="userLogin()">Sign In</button>
+            <div class="link"><a href="#" onclick="event.preventDefault();showAuthTab('register');">New to NetflixZone? Register now.</a></div>
+            <div class="link" style="margin-top:6px;"><a href="#" onclick="event.preventDefault();toggleResetPassword();">Forgot password?</a></div>
+            <div id="resetSection" class="reset-section">
+                <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">Contact admin to reset your password.</p>
+                <input type="text" id="resetUsername" placeholder="Enter your username">
+                <button class="btn-primary" onclick="resetPasswordRequest()">Request Reset</button>
+                <div id="resetMsg" style="font-size:13px;margin-top:8px;text-align:center;"></div>
+            </div>
+        </div>
+        <div id="registerForm" class="hidden">
+            <h2>Create Account</h2>
+            <div id="registerError" class="error"></div>
+            <div id="registerSuccess" class="success"></div>
+            <input type="text" id="regUsername" placeholder="Choose a username" autocomplete="off">
+            <input type="text" id="regFullname" placeholder="Full name">
+            <input type="email" id="regEmail" placeholder="Email address">
+            <input type="text" id="regPhone" placeholder="Phone (optional)">
+            <input type="password" id="regPassword" placeholder="Password">
+            <input type="text" id="regReferral" placeholder="Referral code (optional)" autocomplete="off">
+            <button class="btn-primary" onclick="userRegister()">Create Account</button>
+            <div class="link"><a href="#" onclick="event.preventDefault();showAuthTab('login');">Already have an account? Sign in.</a></div>
+        </div>
+        <div class="admin-hidden-link"><a onclick="openAdminLogin()">●</a></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ADMIN LOGIN OVERLAY -->
+<!-- ============================================================ -->
+<div id="adminLoginOverlay" class="admin-login-overlay">
+    <div class="admin-login-box">
+        <button class="close-admin" onclick="closeAdminLogin()">✕</button>
+        <h3>🔐 Admin Access</h3>
+        <p class="sub">Authorized personnel only</p>
+        <div id="adminLoginError" class="admin-error"></div>
+        <input type="text" id="adminLoginUser" placeholder="Admin username" autocomplete="off">
+        <input type="password" id="adminLoginPass" placeholder="Admin password">
+        <button class="btn-admin" onclick="adminLogin()">Access Dashboard</button>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- USER / ADMIN DASHBOARD -->
+<!-- ============================================================ -->
+<div id="userDashboard" class="dashboard">
+    <div class="topbar">
+        <div class="brand">NATURE<span>ZONE</span></div>
+        <div class="user-menu">
+            <span class="username" id="displayUsername">user</span>
+            <span id="userStatusBadge" class="status-badge active">Active</span>
+            <button onclick="userLogout()" class="logout-btn">Sign Out</button>
+        </div>
+    </div>
+    <div class="dashboard-content">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card"><div class="label">Balance (NGN)</div><div class="value green" id="userBalance">₦0.00</div></div>
+            <div class="stat-card"><div class="label">Invested (NGN)</div><div class="value" id="userInvested">₦0.00</div></div>
+            <div class="stat-card"><div class="label">Total Profit (NGN)</div><div class="value green" id="userProfit">₦0.00</div></div>
+            <div class="stat-card"><div class="label">Referral Bonus</div><div class="value" style="color:var(--purple);" id="userReferralBonus">₦0.00</div></div>
+            <div class="stat-card"><div class="label">Status</div><div class="value" id="userPlan" style="font-size:20px;">-</div></div>
+        </div>
+
+        <!-- Referral Box -->
+        <div class="referral-box">
+            <div class="r-label">Your Referral Code</div>
+            <div class="r-code" id="refCode">-</div>
+            <div class="r-link" id="refLink" onclick="copyRefLink()">Click to copy</div>
+        </div>
+
+        <!-- ASSET INVESTMENT SECTION -->
+        <div class="asset-display" id="assetDisplay">
+            <div class="a-label">Current Investment Asset</div>
+            <div class="a-value" id="currentAssetDisplay">⛏️ Metallic Minerals</div>
+            <div class="a-rate" id="currentAssetRateDisplay">Interest: 2.0% daily</div>
+            <div class="a-cooldown" id="assetCooldownDisplay"></div>
+            <button class="btn-blue" onclick="showAssetSwitchModal()" id="switchAssetBtn" style="margin-top:8px;padding:8px 18px;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:13px;">Switch Asset</button>
+        </div>
+
+        <!-- Interest Countdown & Status -->
+        <div id="interestStatus" class="interest-countdown"></div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="quick-action" onclick="showDepositModal()"><div class="icon">💰</div><h3>Deposit</h3><p>Fund via Monnify</p></div>
+            <div class="quick-action" id="withdrawBtn" onclick="showWithdrawModal()"><div class="icon">💸</div><h3>Withdraw</h3><p>To wallet / bank</p></div>
+            <div class="quick-action" onclick="showProfileModal()"><div class="icon">👤</div><h3>Profile</h3><p>Account details</p></div>
+            <div class="quick-action" onclick="refreshUserData()"><div class="icon">🔄</div><h3>Refresh</h3><p>Update data</p></div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="section-title">Transaction History</div>
+        <div class="tab-buttons">
+            <button class="active" onclick="showTxTab('all')">All</button>
+            <button onclick="showTxTab('deposits')">Deposits</button>
+            <button onclick="showTxTab('withdrawals')">Withdrawals</button>
+            <button onclick="showTxTab('profits')">Profits</button>
+            <button onclick="showTxTab('referrals')">Referrals</button>
+            <button onclick="showTxTab('asset_switch')">Asset Switches</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Details</th></tr></thead><tbody id="userTransactions"></tbody></table></div>
+
+        <!-- ADMIN SECTION -->
+        <div id="adminSection" class="hidden">
+            <div class="section-title" style="color:var(--red);">⚙ Admin Dashboard</div>
+
+            <div class="section-title" style="font-size:15px;color:var(--text2);margin-top:0;">Platform Overview</div>
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));">
+                <div class="stat-card"><div class="label">Total Users</div><div class="value admin-stat-red" id="adminTotalUsers">0</div></div>
+                <div class="stat-card"><div class="label">Active Users</div><div class="value green" id="adminActiveUsers">0</div></div>
+            </div>
+
+            <!-- ASSET INTEREST RATES SETTINGS -->
+            <div class="admin-section">
+                <h3>⛏️ Asset Interest Rates</h3>
+                <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Set daily interest rate (%) for each investment asset. Users earn interest based on their chosen asset.</p>
+                <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+                    <div style="text-align:center;">
+                        <div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px;">⛏️ Metallic Minerals</div>
+                        <input type="number" id="adminAssetRate_metallic" step="0.1" min="0" class="asset-rate-input" value="2.0">
+                        <span style="font-size:12px;color:var(--text3);">%</span>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:12px;color:var(--yellow);font-weight:600;margin-bottom:4px;">⚡ Energy Minerals</div>
+                        <input type="number" id="adminAssetRate_energy" step="0.1" min="0" class="asset-rate-input" value="3.0">
+                        <span style="font-size:12px;color:var(--text3);">%</span>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:12px;color:var(--blue);font-weight:600;margin-bottom:4px;">💎 Gemstones</div>
+                        <input type="number" id="adminAssetRate_gemstone" step="0.1" min="0" class="asset-rate-input" value="4.0">
+                        <span style="font-size:12px;color:var(--text3);">%</span>
+                    </div>
+                    <button onclick="adminSaveAssetRates()" class="btn-blue" style="padding:10px 24px;">💾 Save Asset Rates</button>
+                </div>
+                <div id="assetRateMsg" style="font-size:12px;color:var(--green);margin-top:8px;"></div>
+            </div>
+
+            <!-- Platform Settings -->
+            <div class="admin-section">
+                <h3>⚙️ Platform Settings</h3>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+                    <div><label style="font-size:12px;color:var(--text3);">Min Deposit (NGN)</label><input type="number" id="adminMinDeposit" step="100" min="100" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);width:130px;"></div>
+                    <div><label style="font-size:12px;color:var(--text3);">Min Withdrawal (NGN)</label><input type="number" id="adminMinWithdraw" step="100" min="100" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);width:130px;"></div>
+                    <button onclick="adminUpdateMinAmounts()" class="btn-yellow" style="padding:10px 20px;margin-top:16px;">Set</button>
+                    <div style="font-size:12px;color:var(--text2);margin-top:16px;">Min Deposit ₦<span id="currentMinDeposit">1,000</span> | Min Withdraw ₦<span id="currentMinWithdraw">500</span></div>
+                </div>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+                    <label style="font-size:12px;color:var(--text3);">Withdrawal Day</label>
+                    <select id="adminWithdrawDay" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);">
+                        <option value="5">Friday</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option><option value="4">Thursday</option><option value="6">Saturday</option><option value="-1">Any day</option>
+                    </select>
+                    <button onclick="adminUpdateWithdrawDay()" class="btn-yellow" style="padding:10px 20px;">Set</button>
+                    <div style="font-size:12px;color:var(--text2);">Current: <span id="currentWithdrawDayDisplay">Friday</span></div>
+                </div>
+            </div>
+
+            <!-- Monnify Settings -->
+            <div class="admin-section">
+                <h3>👑 Monnify Settings (Bank Payouts)</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                    <input type="text" id="adminMonnifyApiKey" placeholder="API Key" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <input type="text" id="adminMonnifyContractCode" placeholder="Contract Code" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <input type="password" id="adminMonnifySecretKey" placeholder="Secret Key" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <button onclick="adminSaveMonnifyKeys()" class="btn-yellow" style="padding:10px 20px;">💳 Save</button>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+                    <input type="text" id="adminMonnifySourceAccount" placeholder="Source Account Number" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <div style="font-size:12px;color:var(--text3);padding:10px 0;">(Your Monnify wallet account number)</div>
+                </div>
+                <div style="font-size:12px;color:var(--text2);">Keys from <a href="https://app.monnify.com" target="_blank" style="color:var(--blue);">app.monnify.com</a> → Developers | Disbursements API v2</div>
+                <div id="monnifyMsg" style="font-size:12px;color:var(--green);margin-top:6px;"></div>
+            </div>
+
+            <!-- NOWPayments Settings -->
+            <div class="admin-section">
+                <h3>🔮 NOWPayments Settings (Crypto Payouts)</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                    <input type="text" id="adminNPApiKey" placeholder="NOWPayments API Key" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <input type="password" id="adminNPSecretKey" placeholder="IPN Secret Key" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <input type="email" id="adminNPEmail" placeholder="NP Account Email (JWT)" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <input type="password" id="adminNPPassword" placeholder="NP Account Password (JWT)" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:2;">
+                    <button onclick="adminSaveNPKeys()" class="btn-yellow" style="padding:10px 20px;">💾 Save</button>
+                </div>
+                <div style="font-size:12px;color:var(--text2);">From <a href="https://nowpayments.io" target="_blank" style="color:var(--blue);">nowpayments.io</a> → API Settings | Mass Payouts</div>
+                <div id="npMsg" style="font-size:12px;color:var(--green);margin-top:6px;"></div>
+            </div>
+
+            <!-- Pending Withdrawals -->
+            <div class="admin-section">
+                <h3>⏳ Pending Withdrawals (Approve or Decline)</h3>
+                <div id="pendingWithdrawals"></div>
+            </div>
+
+            <!-- All Users Cards -->
+            <div class="admin-section">
+                <h3>All Users</h3>
+                <div id="adminUserCards" class="admin-grid"></div>
+            </div>
+
+            <!-- Create User -->
+            <div class="admin-section">
+                <h3>Create User</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <input type="text" id="adminNewUser" placeholder="Username" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <input type="text" id="adminNewPass" placeholder="Password" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <input type="text" id="adminNewName" placeholder="Full name" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <button onclick="adminCreateUser()" class="btn-green" style="padding:10px 20px;">➕ Create</button>
+                </div>
+                <div id="adminCreateMsg" style="margin-top:8px;font-size:13px;color:var(--green);"></div>
+            </div>
+
+            <!-- Change Admin Password -->
+            <div class="admin-section">
+                <h3>🔑 Change Admin Password</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <input type="password" id="adminCurrentPass" placeholder="Current" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <input type="password" id="adminNewPassInput" placeholder="New" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <button onclick="changeAdminPassword()" class="btn-blue" style="padding:10px 20px;">Update</button>
+                </div>
+                <div id="changePassMsg" style="font-size:13px;"></div>
+            </div>
+
+            <!-- Reset User Password -->
+            <div class="admin-section">
+                <h3>🔑 Reset User Password</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <input type="text" id="adminResetUser" placeholder="Username" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <input type="text" id="adminResetUserPass" placeholder="New password" style="padding:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);flex:1;">
+                    <button onclick="adminResetUserPassword()" class="btn-blue" style="padding:10px 20px;">Reset</button>
+                </div>
+                <div id="resetUserPassMsg" style="font-size:13px;"></div>
+            </div>
+
+            <!-- System Actions -->
+            <div class="admin-section">
+                <h3>System Actions</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button onclick="adminPayAllProfits()" class="btn-blue" style="padding:10px 20px;">💰 Apply Daily Interest</button>
+                    <button onclick="refreshAdminData()" class="btn-yellow" style="padding:10px 20px;">🔄 Refresh</button>
+                </div>
+                <div id="adminActionMsg" style="margin-top:8px;font-size:13px;color:var(--blue);"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DEPOSIT MODAL -->
+<!-- ============================================================ -->
+<div id="depositModal" class="modal-overlay">
+    <div class="modal">
+        <h3>💰 Make a Deposit (NGN)</h3>
+        <div id="depositError" class="error"></div>
+        <div id="depositInfo" style="font-size:13px;color:var(--text2);margin-bottom:12px;"></div>
+        <input type="number" id="depositAmount" placeholder="Amount (NGN)" min="1000" step="100">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">Email (required):</div>
+        <input type="email" id="depositEmail" placeholder="your@email.com">
+        <div class="modal-actions">
+            <button class="cancel" onclick="closeModal('depositModal')">Cancel</button>
+            <button class="btn-green" onclick="processDeposit()" style="background:var(--red);color:var(--text);">💳 Pay with Monnify</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- WITHDRAW MODAL -->
+<!-- ============================================================ -->
+<div id="withdrawModal" class="modal-overlay">
+    <div class="modal">
+        <h3>💸 Withdraw Funds</h3>
+        <div id="withdrawError" class="error"></div>
+        <div id="withdrawInfo" style="color:var(--yellow);font-size:13px;margin-bottom:12px;"></div>
+        <div class="withdraw-type-tabs">
+            <div class="active" onclick="switchWithdrawType('crypto')">💎 Crypto</div>
+            <div onclick="switchWithdrawType('bank')">🏦 Bank</div>
+        </div>
+        <div id="cryptoWithdrawFields">
+            <input type="number" id="withdrawAmount" placeholder="Amount (NGN)" min="500" step="100">
+            <select id="withdrawCurrency" style="margin-bottom:12px;">
+                <option value="USDT (TRC20)">USDT (TRC20)</option>
+                <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
+                <option value="Ethereum (ETH)">Ethereum (ETH)</option>
+                <option value="Tron (TRX)">Tron (TRX)</option>
+                <option value="Litecoin (LTC)">Litecoin (LTC)</option>
+                <option value="Dogecoin (DOGE)">Dogecoin (DOGE)</option>
+                <option value="Solana (SOL)">Solana (SOL)</option>
+            </select>
+            <input type="text" id="withdrawWallet" placeholder="Wallet address">
+        </div>
+        <div id="bankWithdrawFields" class="hidden">
+            <input type="number" id="withdrawBankAmount" placeholder="Amount (NGN)" min="500" step="100">
+            <select id="withdrawBankName" style="margin-bottom:12px;">
+                <option value="">-- Select Bank --</option>
+                <option value="Access Bank|044">Access Bank</option>
+                <option value="Ecobank|050">Ecobank</option>
+                <option value="Fidelity Bank|070">Fidelity Bank</option>
+                <option value="First Bank|011">First Bank of Nigeria</option>
+                <option value="First City Monument Bank|214">First City Monument Bank (FCMB)</option>
+                <option value="GTBank|058">GTBank</option>
+                <option value="Jaiz Bank|301">Jaiz Bank</option>
+                <option value="Keystone Bank|082">Keystone Bank</option>
+                <option value="Polaris Bank|076">Polaris Bank</option>
+                <option value="Stanbic IBTC|221">Stanbic IBTC</option>
+                <option value="Sterling Bank|232">Sterling Bank</option>
+                <option value="Union Bank|032">Union Bank</option>
+                <option value="United Bank for Africa|033">United Bank for Africa (UBA)</option>
+                <option value="Unity Bank|215">Unity Bank</option>
+                <option value="Wema Bank|035">Wema Bank</option>
+                <option value="Zenith Bank|057">Zenith Bank</option>
+            </select>
+            <input type="text" id="withdrawBankAccount" placeholder="Account number">
+            <input type="text" id="withdrawBankHolder" placeholder="Account holder name">
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">⚠️</div>
+        <div class="modal-actions">
+            <button class="cancel" onclick="closeModal('withdrawModal')">Cancel</button>
+            <button class="btn-yellow" onclick="processWithdraw()" style="background:var(--yellow);color:var(--black);">Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- ASSET SWITCH MODAL -->
+<div id="assetSwitchModal" class="modal-overlay">
+    <div class="modal">
+        <h3>⛏️ Switch Investment Asset</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Choose your investment asset class. Different assets earn different daily interest rates. You can only switch once every 24 hours.</p>
+        <div id="assetSwitchError" class="error"></div>
+        <div id="assetSwitchOptions" style="margin-bottom:14px;">
+            <div class="admin-card" style="cursor:pointer;margin-bottom:8px;background:var(--card);" onclick="selectAssetOption('metallic')">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><strong style="color:var(--purple);font-size:15px;">⛏️ Metallic Minerals</strong></div>
+                    <div style="font-size:13px;color:var(--text2);" id="assetRateDisplay_metallic">2.0% daily</div>
+                </div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px;">Iron, Copper, Gold, Silver, Platinum</div>
+            </div>
+            <div class="admin-card" style="cursor:pointer;margin-bottom:8px;background:var(--card);" onclick="selectAssetOption('energy')">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><strong style="color:var(--yellow);font-size:15px;">⚡ Energy Minerals</strong></div>
+                    <div style="font-size:13px;color:var(--text2);" id="assetRateDisplay_energy">3.0% daily</div>
+                </div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px;">Crude Oil, Natural Gas, Coal, Uranium</div>
+            </div>
+            <div class="admin-card" style="cursor:pointer;margin-bottom:8px;background:var(--card);" onclick="selectAssetOption('gemstone')">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><strong style="color:var(--blue);font-size:15px;">💎 Gemstones</strong></div>
+                    <div style="font-size:13px;color:var(--text2);" id="assetRateDisplay_gemstone">4.0% daily</div>
+                </div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px;">Diamond, Ruby, Sapphire, Emerald, Opal</div>
+            </div>
+        </div>
+        <div id="selectedAssetDisplay" style="font-size:14px;color:var(--green);margin-bottom:12px;text-align:center;"></div>
+        <div class="modal-actions">
+            <button class="cancel" onclick="closeModal('assetSwitchModal')">Cancel</button>
+            <button class="btn-blue" onclick="confirmAssetSwitch()" style="background:var(--green);color:var(--black);">Confirm Switch</button>
+        </div>
+    </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal-overlay">
+    <div class="modal">
+        <h3>👤 Account Profile</h3>
+        <div id="profileInfo"></div>
+        <div class="modal-actions"><button class="cancel" onclick="closeModal('profileModal')" style="width:100%;">Close</button></div>
+    </div>
+</div>
+
+<!-- DEPOSIT RESULT MODAL -->
+<div id="depositResultModal" class="modal-overlay">
+    <div class="modal" style="text-align:center;">
+        <h3 id="depositResultTitle">✅ Payment Confirmed</h3>
+        <div id="depositResultContent" style="font-size:14px;color:var(--text2);margin:16px 0;"></div>
+        <div class="modal-actions">
+            <button class="btn-green" onclick="closeModal('depositResultModal');refreshUserData();" style="background:var(--red);color:var(--text);width:100%;">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- PAYOUT RESULT MODAL -->
+<div id="payoutResultModal" class="modal-overlay">
+    <div class="modal" style="text-align:center;">
+        <h3 id="payoutResultTitle">✅ Payout Initiated</h3>
+        <div id="payoutResultContent" style="font-size:14px;color:var(--text2);margin:16px 0;"></div>
+        <div class="modal-actions">
+            <button class="btn-green" onclick="closeModal('payoutResultModal');refreshAdminData();" style="background:var(--red);color:var(--text);width:100%;">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Monnify SDK -->
+<script src="https://sdk.monnify.com/plugin/monnify.js"></script>
+
+<script>
+// ================================================================
+// FIREBASE CONFIG — EDIT YOUR PROJECT DETAILS HERE
+// ================================================================
+var firebaseConfig = {
+  apiKey: "AIzaSyAUTa9zY9Oe9GdvH3A5-lFT9RVyQqmojB0",
+  authDomain: "fir-invest-d556e.firebaseapp.com",
+  databaseURL: "https://fir-invest-d556e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fir-invest-d556e",
+  storageBucket: "fir-invest-d556e.firebasestorage.app",
+  messagingSenderId: "480650637004",
+  appId: "1:480650637004:web:ef7f953a5d75227d42dc69"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+var CURRENCY_SYMBOL = "\u20A6";
+var CURRENCY_CODE = "NGN";
+var DEFAULT_MIN_DEPOSIT = 1000;
+var DEFAULT_MIN_WITHDRAW = 500;
+var ASSET_SWITCH_COOLDOWN_HOURS = 24;
+
+var ASSET_TYPES = {
+    metallic: { id:'metallic', name:'Metallic Minerals', icon:'⛏️', color:'var(--purple)', description:'Iron, Copper, Gold, Silver, Platinum', defaultRate:2.0 },
+    energy: { id:'energy', name:'Energy Minerals', icon:'⚡', color:'var(--yellow)', description:'Crude Oil, Natural Gas, Coal, Uranium', defaultRate:3.0 },
+    gemstone: { id:'gemstone', name:'Gemstones', icon:'💎', color:'var(--blue)', description:'Diamond, Ruby, Sapphire, Emerald, Opal', defaultRate:4.0 }
+};
+
+var appData = null, currentUser = null, currentUserData = null, isAdminLoggedIn = false, currentTxTab = 'all', _pendingAssetSelection = null;
+var _initResolve = null;
+var initPromise = new Promise(function(r){ _initResolve = r; });
+var interestCountdownInterval = null;
+
+function esc(s) { if(!s)return''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function minDep() { return (appData&&appData.settings&&appData.settings.minDeposit)||DEFAULT_MIN_DEPOSIT; }
+function minWd() { return (appData&&appData.settings&&appData.settings.minWithdraw)||DEFAULT_MIN_WITHDRAW; }
+function wdDay() { if(!appData||!appData.settings||appData.settings.withdrawDay===undefined)return 5; return parseInt(appData.settings.withdrawDay); }
+function wdName(d) { var a=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; return d===-1?'Any day':a[d]; }
+function fmtNaira(amount) { return CURRENCY_SYMBOL + Number(amount).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function getNowStr() { var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); }
+
+// ================================================================
+// FIREBASE: Real-time data binding — NO MORE DATA LOSS
+// ================================================================
+function initDefaultsIfNeeded(snapshot) {
+    var data = snapshot.val();
+    if (!data) {
+        var defaults = {
+            admin: { username: 'admin', password: 'admin123' },
+            settings: { interestRate:2, minDeposit:1000, minWithdraw:500, withdrawDay:5, monnifyApiKey:'', monnifyContractCode:'', monnifySecretKey:'', monnifySourceAccount:'', npApiKey:'', npSecretKey:'', npEmail:'', npPassword:'', assetRates:{ metallic:2.0, energy:3.0, gemstone:4.0 } },
+            users: {}
+        };
+        db.ref('/').set(defaults).then(function(){
+            appData = defaults;
+            _initResolve();
+        });
+    } else {
+        if (data.users) {
+            for (var un in data.users) {
+                var u = data.users[un];
+                if (!u.asset) u.asset = 'metallic';
+                if (!u.lastAssetSwitch) u.lastAssetSwitch = '';
+                if (!u.processedReferences) u.processedReferences = [];
+                if (!u.transactions) u.transactions = [];
+                if (!u.withdrawals) u.withdrawals = [];
+                if (!u.referrals) u.referrals = [];
+                if (u.bonusPaidReferees === undefined) u.bonusPaidReferees = []; // Track which referees already paid bonus for
+            }
+        }
+        if (!data.settings) data.settings = {};
+        if (!data.settings.assetRates) data.settings.assetRates = { metallic:2.0, energy:3.0, gemstone:4.0 };
+        if (!data.admin) data.admin = { username:'admin', password:'admin123' };
+        appData = data;
+        _initResolve();
+    }
+}
+
+db.ref('/').on('value', function(snapshot) {
+    var data = snapshot.val();
+    if (!data) {
+        initDefaultsIfNeeded(snapshot);
+        return;
+    }
+    appData = data;
+    if (currentUser && appData.users && appData.users[currentUser]) {
+        currentUserData = appData.users[currentUser];
+        if (document.getElementById('userDashboard').classList.contains('active')) {
+            if (isAdminLoggedIn) refreshAdminData();
+            else refreshUserData();
+        }
+    }
+    if (isAdminLoggedIn && document.getElementById('adminSection') && !document.getElementById('adminSection').classList.contains('hidden')) {
+        refreshAdminData();
+    }
+});
+
+// ================================================================
+// SESSION PERSISTENCE
+// ================================================================
+function saveSession(username, isAdmin) {
+    try { localStorage.setItem('nz_session', JSON.stringify({username:username, isAdmin:isAdmin||false, timestamp:Date.now()})); } catch(e){}
+}
+function clearSession() {
+    try { localStorage.removeItem('nz_session'); } catch(e){}
+}
+function getSession() {
+    try { var s=localStorage.getItem('nz_session'); return s?JSON.parse(s):null; } catch(e){ return null; }
+}
+
+// ================================================================
+// AUTH UI
+// ================================================================
+function showAuthTab(t) {
+    document.querySelectorAll('.auth-tabs div').forEach(function(e){e.classList.remove('active');});
+    if(t==='login'){
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('registerForm').classList.add('hidden');
+        document.querySelector('.auth-tabs div:first-child').classList.add('active');
+    } else {
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('registerForm').classList.remove('hidden');
+        document.querySelector('.auth-tabs div:last-child').classList.add('active');
+    }
+    ['loginError','registerError','registerSuccess'].forEach(function(i){document.getElementById(i).textContent='';});
+}
+function toggleResetPassword() { var s=document.getElementById('resetSection'); s.classList.toggle('show'); document.getElementById('resetUsername').value=''; document.getElementById('resetMsg').textContent=''; }
+
+function getUserInterestRate(userData) {
+    if (!userData) userData = currentUserData;
+    var asset = (userData&&userData.asset)||'metallic';
+    var rates = (appData.settings&&appData.settings.assetRates)||{};
+    var rate = rates[asset];
+    if (rate===undefined||rate===null) rate = (ASSET_TYPES[asset]?ASSET_TYPES[asset].defaultRate:2.0);
+    return parseFloat(rate);
+}
+function getAssetInfo(assetId) { return ASSET_TYPES[assetId]||ASSET_TYPES.metallic; }
+function canSwitchAsset(userData) {
+    if (!userData) return true;
+    var lastSwitch = userData.lastAssetSwitch||'';
+    if (!lastSwitch) return true;
+    return (Date.now()-new Date(lastSwitch).getTime())/(1000*60*60) >= ASSET_SWITCH_COOLDOWN_HOURS;
+}
+function getAssetSwitchCooldownRemaining(userData) {
+    if (!userData||!userData.lastAssetSwitch) return 0;
+    return Math.max(0, ASSET_SWITCH_COOLDOWN_HOURS - (Date.now()-new Date(userData.lastAssetSwitch).getTime())/(1000*60*60));
+}
+
+// ================================================================
+// INTEREST COUNTDOWN — 24h timer displayed to all users
+// ================================================================
+function startInterestCountdown() {
+    if (interestCountdownInterval) clearInterval(interestCountdownInterval);
+    update
